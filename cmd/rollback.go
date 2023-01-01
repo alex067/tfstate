@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 NAME HERE panayi067@gmail.com
 
 */
 package cmd
@@ -84,6 +84,7 @@ var rollbackCmd = &cobra.Command{
 
 		if currentStateSerial == backupStateSerial {
 			log.Println("Rollback command canceled.")
+			return
 		}
 
 		if currentStateSerial-backupStateSerial != 1 {
@@ -104,11 +105,12 @@ var rollbackCmd = &cobra.Command{
 			return
 		}
 
+		var outb, errb bytes.Buffer
+
 		fullRestoreStatePath := fmt.Sprintf("%s/%s/%s", CurrentWorkingDirectory, TfstateFullPath, restoreStateFile)
 		if runtime.GOOS == "windows" {
 			restoreCmd := exec.Command("cmd", "/c", "terraform", "state", "push", "--force", fullRestoreStatePath)
 
-			var outb, errb bytes.Buffer
 			restoreCmd.Stdout = &outb
 			restoreCmd.Stderr = &errb
 
@@ -116,9 +118,19 @@ var rollbackCmd = &cobra.Command{
 				log.Fatal("Error running rollback command: ", errb.String(), err)
 			}
 
-			log.Printf("State rolled back to serial: %d", backupStateSerial)
-			log.Printf("Restored file: %s", fullRestoreStatePath)
+		} else if runtime.GOOS == "darwin" {
+			restoreCmd := exec.Command("terraform", "state", "push", "--force", fullRestoreStatePath)
+
+			restoreCmd.Stdout = &outb
+			restoreCmd.Stderr = &errb
+
+			if err := restoreCmd.Run(); err != nil {
+				log.Fatal("Error running rollback command: ", errb.String(), err)
+			}
 		}
+
+		log.Printf("State rolled back to serial: %d", backupStateSerial)
+		log.Printf("Restored file: %s", fullRestoreStatePath)
 	},
 }
 

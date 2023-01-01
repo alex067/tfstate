@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 NAME HERE panayi067@gmail.com
 
 */
 package cmd
@@ -18,23 +18,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// rmCmd represents the rm command
 var rmCmd = &cobra.Command{
 	Use:   "rm",
 	Short: "A wrapper around terraform state rm",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long: `A wrapper around terraform state rm, adding automatic state backup to easily rollback changes,
+	and a confirmation step to first review affected resources.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if VersionFlag {
 			log.Printf(outputVersion())
 			return
 		}
 
-		if len(args) != 1 {
+		if len(args) == 0 {
 			log.Fatal("Must provide valid terraform state rm command")
 		}
 
@@ -51,22 +46,24 @@ to quickly create a Cobra application.`,
 
 		json.Unmarshal(stateFile, &payload)
 
-		isModule := args[0][0:len("module")] == "module"
+		for _, arg := range args {
+			isModule := arg[0:len("module")] == "module"
 
-		for resource, _ := range payload.Resources {
-			resourceAddress := fmt.Sprintf("%s.%s", payload.Resources[resource].Type, payload.Resources[resource].Name)
+			for resource, _ := range payload.Resources {
+				resourceAddress := fmt.Sprintf("%s.%s", payload.Resources[resource].Type, payload.Resources[resource].Name)
 
-			if payload.Resources[resource].Module != "" {
-				resourceAddress = fmt.Sprintf("%s.%s", payload.Resources[resource].Module, resourceAddress)
-			}
+				if payload.Resources[resource].Module != "" {
+					resourceAddress = fmt.Sprintf("%s.%s", payload.Resources[resource].Module, resourceAddress)
+				}
 
-			for instance, _ := range payload.Resources[resource].Instances {
-				dependencies := payload.Resources[resource].Instances[instance].Dependencies
+				for instance, _ := range payload.Resources[resource].Instances {
+					dependencies := payload.Resources[resource].Instances[instance].Dependencies
 
-				if isModule && utils.ModuleContains(dependencies, args[0]) {
-					affectedDependencies = append(affectedDependencies, resourceAddress)
-				} else if !isModule && utils.Contains(dependencies, args[0]) {
-					affectedDependencies = append(affectedDependencies, resourceAddress)
+					if isModule && utils.ModuleContains(dependencies, arg) {
+						affectedDependencies = append(affectedDependencies, resourceAddress)
+					} else if !isModule && utils.Contains(dependencies, arg) {
+						affectedDependencies = append(affectedDependencies, resourceAddress)
+					}
 				}
 			}
 		}
@@ -103,27 +100,34 @@ to quickly create a Cobra application.`,
 			return
 		}
 
+		var outb, errb bytes.Buffer
+
 		rmCommand := []string{}
-		rmCommand = append([]string{args[0]}, rmCommand...)
+		rmCommand = append(rmCommand, args...)
 		rmCommand = append([]string{"rm"}, rmCommand...)
 		rmCommand = append([]string{"state"}, rmCommand...)
 		rmCommand = append([]string{"terraform"}, rmCommand...)
 
-		initCommand := ""
-
 		if runtime.GOOS == "windows" {
 			rmCommand = append([]string{"/c"}, rmCommand...)
-			initCommand = "cmd"
-		}
+			stateCmd := exec.Command("cmd", rmCommand...)
 
-		stateCmd := exec.Command(initCommand, rmCommand...)
+			stateCmd.Stdout = &outb
+			stateCmd.Stderr = &errb
 
-		var outb, errb bytes.Buffer
-		stateCmd.Stdout = &outb
-		stateCmd.Stderr = &errb
+			if err := stateCmd.Run(); err != nil {
+				log.Fatal("Error running state command: ", outb.String())
+			}
+		} else if runtime.GOOS == "darwin" {
+			// pop terraform
+			rmCommand = rmCommand[1:]
+			stateCmd := exec.Command("terraform", rmCommand...)
+			stateCmd.Stdout = &outb
+			stateCmd.Stderr = &errb
 
-		if err := stateCmd.Run(); err != nil {
-			log.Fatal("Error running state command: ", outb.String())
+			if err := stateCmd.Run(); err != nil {
+				log.Fatal("Error running state command: ", outb.String())
+			}
 		}
 
 		log.Println(outb.String())

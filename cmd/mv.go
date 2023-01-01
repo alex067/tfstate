@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 NAME HERE panayi067@gmail.com
 
 */
 package cmd
@@ -99,32 +99,25 @@ and a confirmation step to first review affected resources.`,
 			return
 		}
 
-		runCommand := []string{}
-
-		for _, val := range args {
-			runCommand = append(runCommand, val)
-		}
-
-		runCommand = append([]string{"mv"}, runCommand...)
-		runCommand = append([]string{"state"}, runCommand...)
-		runCommand = append([]string{"terraform"}, runCommand...)
-		initCommand := ""
+		var outb, errb bytes.Buffer
 
 		if runtime.GOOS == "windows" {
-			runCommand = append([]string{"/c"}, runCommand...)
-			initCommand = "cmd"
+			stateCmd := exec.Command("cmd", "/c", "terraform", "state", "mv", args[0], args[1])
+			stateCmd.Stdout = &outb
+			stateCmd.Stderr = &errb
+
+			if err := stateCmd.Run(); err != nil {
+				log.Fatal("Error running state command: ", outb.String())
+			}
+		} else if runtime.GOOS == "darwin" {
+			stateCmd := exec.Command("terraform", "state", "mv", args[0], args[1])
+			stateCmd.Stdout = &outb
+			stateCmd.Stderr = &errb
+
+			if err := stateCmd.Run(); err != nil {
+				log.Fatal("Error running state command: ", outb.String())
+			}
 		}
-
-		stateCmd := exec.Command(initCommand, runCommand...)
-
-		var outb, errb bytes.Buffer
-		stateCmd.Stdout = &outb
-		stateCmd.Stderr = &errb
-
-		if err := stateCmd.Run(); err != nil {
-			log.Fatal("Error running state command: ", outb.String())
-		}
-
 		log.Println(outb.String())
 	},
 }

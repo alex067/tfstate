@@ -57,10 +57,18 @@ func StateDownload(currentWorkingDir string) string {
 		if err != nil {
 			log.Fatal("Error performing state file backup: ", err)
 		}
+	} else if runtime.GOOS == "darwin" {
+		cmd := exec.Command("terraform", "state", "pull", ">", fullPath)
+
+		_, err := cmd.Output()
+		if err != nil {
+			log.Fatal("Error performing state file backup: ", err)
+		}
 	}
 
 	log.Printf("State file backup: %s", stateFileName)
 
+	// Remove existing state backups
 	stateBackupName := fmt.Sprintf("state-%d", stateSerial)
 	stateBackupsToDelete := []string{}
 
@@ -73,7 +81,6 @@ func StateDownload(currentWorkingDir string) string {
 		}
 	}
 
-	// Remove existing state backups
 	if len(stateBackupsToDelete) > 0 {
 		for _, val := range stateBackupsToDelete {
 			os.Remove(fmt.Sprintf("%s/.terraform/tfstate/%s", currentWorkingDir, val))
@@ -84,19 +91,29 @@ func StateDownload(currentWorkingDir string) string {
 }
 
 func StateOutput(isRemote bool, currentWorkingDir string) string {
-	var statefile string
+	var stdout []byte
+	var err error
 
 	if runtime.GOOS == "windows" {
 		if isRemote {
 			cmd := exec.Command("cmd", "/c", "terraform", "state", "pull")
 
-			stdout, err := cmd.Output()
+			stdout, err = cmd.Output()
 			if err != nil {
 				log.Fatal("Error reading state file: ", err)
 			}
-			statefile = string([]byte(stdout))
+		}
+	} else if runtime.GOOS == "darwin" {
+		if isRemote {
+			cmd := exec.Command("terraform", "state", "pull")
+
+			stdout, err = cmd.Output()
+			if err != nil {
+				log.Fatal("Error reading state file: ", err)
+			}
 		}
 	}
+	statefile := string([]byte(stdout))
 	return statefile
 }
 
