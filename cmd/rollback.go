@@ -123,13 +123,13 @@ var rollbackCmd = &cobra.Command{
 			return
 		}
 
+		if !utils.IsTfstateInit(CurrentWorkingDirectory) {
+			log.Fatal("Rollback files must exist in .terraform/tfstate")
+		}
+
 		if !IsRemote {
 			log.Println("Rollback is disabled when using local state")
 			return
-		}
-
-		if !utils.IsTfstateInit(CurrentWorkingDirectory) {
-			log.Fatal("Rollback files must exist in .terraform/tfstate")
 		}
 
 		rollbackLatest, _ := cmd.Flags().GetBool("latest")
