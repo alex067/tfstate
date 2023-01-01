@@ -87,7 +87,6 @@ var rootCmd = &cobra.Command{
 	Short: "A wrapper around terraform state",
 	Long:  `tfstate provides simple guard rails and automatic backup recovery when running state commands.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(Version)
 		if len(args) == 0 && !VersionFlag {
 			cmd.Help()
 			return
@@ -101,6 +100,7 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

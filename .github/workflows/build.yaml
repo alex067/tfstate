@@ -36,7 +36,7 @@ jobs:
           export GOOS=windows 
           export GOARCH=${{ matrix.machines }}
           env | grep GOOS
-          go build -o bin/windows/${{ matrix.machines }}/tfstate -ldflags "-X main.version=${{ inputs.version }}"
+          go build -o bin/windows/${{ matrix.machines }}/tfstate.exe -ldflags "-X main.version=${{ inputs.version }}"
       - uses: actions/upload-artifact@master 
         with:
           name: tfstate-${{ inputs.version }}
