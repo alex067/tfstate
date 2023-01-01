@@ -58,7 +58,7 @@ func StateDownload(currentWorkingDir string) string {
 			log.Fatal("Error performing state file backup: ", err)
 		}
 	} else if runtime.GOOS == "darwin" {
-		cmd := exec.Command("terraform", "state", "pull", ">", fullPath)
+		cmd := exec.Command("bash", "-c", fmt.Sprintf("terraform state pull > %s", fullPath))
 
 		_, err := cmd.Output()
 		if err != nil {
@@ -81,10 +81,8 @@ func StateDownload(currentWorkingDir string) string {
 		}
 	}
 
-	if len(stateBackupsToDelete) > 0 {
-		for _, val := range stateBackupsToDelete {
-			os.Remove(fmt.Sprintf("%s/.terraform/tfstate/%s", currentWorkingDir, val))
-		}
+	for _, val := range stateBackupsToDelete {
+		os.Remove(fmt.Sprintf("%s/.terraform/tfstate/%s", currentWorkingDir, val))
 	}
 
 	return stateFileName
