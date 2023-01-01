@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var Version string
 var VersionFlag bool
 var CurrentWorkingDirectory string
 var TfstateFullPath = ".terraform/tfstate"
@@ -52,25 +53,32 @@ type AffectedDependencies struct {
 
 func outputVersion() string {
 	var terraformVersion string
+	var stdout []byte
+	var err error
 
 	if runtime.GOOS == "windows" {
 		versionCmd := exec.Command("cmd", "/c", "terraform", "--version")
+		stdout, err = versionCmd.Output()
 
-		stdout, err := versionCmd.Output()
-		if err != nil || len(stdout) == 0 {
-			log.Fatal("Unable to execute terraform --version")
-			os.Exit(1)
-		}
-
-		versionCmdOutput := string([]byte(stdout))
-		terraformVersion = strings.Split(versionCmdOutput, "\n")[0]
-
-		if terraformVersion[0:len("Terraform")] != "Terraform" {
-			log.Fatal("Unable to read the terraform version")
-			os.Exit(1)
-		}
+	} else if runtime.GOOS == "darwin" {
+		versionCmd := exec.Command("terraform", "--version")
+		stdout, err = versionCmd.Output()
 	}
-	return fmt.Sprintf("%s, %s", terraformVersion, "Tfstate v1.0.0")
+
+	if err != nil || len(stdout) == 0 {
+		log.Fatal("Unable to execute terraform --version")
+		os.Exit(1)
+	}
+
+	versionCmdOutput := string([]byte(stdout))
+	terraformVersion = strings.Split(versionCmdOutput, "\n")[0]
+
+	if terraformVersion[0:len("Terraform")] != "Terraform" {
+		log.Fatal("Unable to read the terraform version")
+		os.Exit(1)
+	}
+
+	return fmt.Sprintf("%s, Tfstate v%s", terraformVersion, Version)
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -79,6 +87,7 @@ var rootCmd = &cobra.Command{
 	Short: "A wrapper around terraform state",
 	Long:  `tfstate provides simple guard rails and automatic backup recovery when running state commands.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(Version)
 		if len(args) == 0 && !VersionFlag {
 			cmd.Help()
 			return
@@ -105,23 +114,7 @@ func init() {
 	}
 
 	CurrentWorkingDirectory = workingDirectory
-
-	if !utils.IsTerraformInit(CurrentWorkingDirectory) {
-		log.Fatal("Run terraform init to initialize .terraform used by tfstate")
-	}
-
 	IsRemote = utils.IsRemoteState(CurrentWorkingDirectory)
-	if !IsRemote {
-		log.Println("Detected local state, auto state backup is disabled")
-	}
-
-	if IsRemote && !utils.IsTfstateInit(CurrentWorkingDirectory) {
-		dirFullPath := fmt.Sprintf("%s/.terraform/tfstate", CurrentWorkingDirectory)
-		err := os.Mkdir(dirFullPath, 0777)
-		if err != nil {
-			log.Fatal("Error initializing tfstate directory: ", err)
-		}
-	}
 
 	rootCmd.PersistentFlags().BoolVarP(&VersionFlag, "version", "v", false, "get the current version of tfstate and terraform")
 }

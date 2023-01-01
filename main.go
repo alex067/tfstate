@@ -9,11 +9,14 @@ import (
 	"log"
 )
 
+var version string
+
 func confLogger() {
 	log.SetFlags(log.Ltime)
 }
 
 func main() {
 	confLogger()
+	cmd.Version = version
 	cmd.Execute()
 }
