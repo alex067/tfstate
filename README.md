@@ -2,6 +2,26 @@
 
 A wrapper around terraform state commands.
 
+## Help
+```
+tfstate provides simple guard rails and automatic backup recovery when running state commands.
+
+Usage:
+  tfstate [flags]
+  tfstate [command]
+
+Available Commands:
+  backup      Backup the current state file
+  help        Help about any command
+  mv          A wrapper around terraform state mv
+  rm          A wrapper around terraform state rm
+  rollback    Rollback to an earlier State file version
+
+Flags:
+  -h, --help      help for tfstate
+  -v, --version   get the current version of tfstate and terraform
+```
+
 ## Description 
 
 tfstate is a wrapper around terraform state commands which alter the state file, such as ```terraform state mv``` and ```terraform state rm```
