@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"runtime"
 
@@ -44,6 +45,11 @@ func handleActionRollback(args []string, rollbackLatest bool) {
 				restoreStateFile = f.Name()
 				break
 			}
+		}
+
+		if restoreStateFile == "" {
+			log.Printf("Unable to locate latest backup %s", statePrevious)
+			os.Exit(0)
 		}
 	} else {
 		restoreStateFile = args[0]
